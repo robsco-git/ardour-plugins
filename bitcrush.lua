@@ -45,14 +45,20 @@ end
 local key_samples = {} -- For downsampling: store samples (for each channel) at set intervals to replace existing sample.
 local sample_sums = {} -- How many samples have been visited. Reset each time a new key sample is set.
 
+local prev_rate
+
 function dsp_run (ins, outs, n_samples)
     local ctrl = CtrlPorts:array() -- get control port array (read/write)
-    -- local bit_depth = 4
     local bit_depth = ctrl[1]
-    -- local user_rate = 11000
-    local user_rate = ctrl[2]
+    local current_rate = ctrl[2]
+    if (current_rate ~= prev_rate) then
+        -- Reinitialize
+        key_samples = {}
+        sample_sums = {}
+    end
+    prev_rate = current_rate
     local max = (2 ^ bit_depth) - 1;
-    local step = math.floor(sample_rate / user_rate); -- The number of samples that need to have the same value based on the session's sample rate    
+    local step = math.floor(sample_rate / current_rate); -- The number of samples that need to have the same value based on the session's sample rate    
 
 	for c = 1, #outs do -- for each output channel (count from 1 to number of output channels)
 		if ins[c] ~= outs[c] then -- if processing is not in-place..
