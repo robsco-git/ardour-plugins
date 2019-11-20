@@ -76,7 +76,6 @@ function soft_clip (f)
 	elseif f <= -1 then
 		return -2 / 3
 	else
-		
 		return f - (f ^ 3) / 3
 	end
 end
@@ -84,21 +83,17 @@ end
 function dsp_runmap (bufs, in_map, out_map, n_samples, offset)
 	local ctrl = CtrlPorts:array() -- get control port array (read/write)
 	for c = 1,audio_ins do
-		-- ensure that processing does happen in-place
-		local ib = in_map:get(ARDOUR.DataType("audio"), c - 1); -- get id of mapped input buffer for given cannel
-		local ob = out_map:get(ARDOUR.DataType("audio"), c - 1); -- get id of mapped output buffer for given cannel
-		assert (ib ~= ARDOUR.ChanMapping.Invalid);
-		assert (ob ~= ARDOUR.ChanMapping.Invalid);
+		local ib = in_map:get(ARDOUR.DataType("audio"), c - 1);
+		local ob = out_map:get(ARDOUR.DataType("audio"), c - 1);
 
-		local bi = bufs:get_audio(ib)
-		local bo = bufs:get_audio(ob)
-		assert (bi == bo)
+		if ib == ARDOUR.ChanMapping.Invalid and ob ~= ARDOUR.ChanMapping.Invalid then
+			bufs:get_audio (ob):silence (n_samples, offset)
+			goto nextchannel
+		end
 
 		local dist_type = ctrl[1]
 		local input_gain = ARDOUR.DSP.dB_to_coefficient (ctrl[2])
 		local output_gain = ARDOUR.DSP.dB_to_coefficient (ctrl[3])
-
-		local a = bufs:get_audio(ib):data(offset):array() -- get a reference (pointer to array)
 
 		local dist_func
 		if dist_type == 0 then
@@ -111,8 +106,13 @@ function dsp_runmap (bufs, in_map, out_map, n_samples, offset)
 			dist_func = soft_clip
 		end
 
+		local i = bufs:get_audio(ib):data(offset):array()
+		local o = bufs:get_audio(ob):data(offset):array()
+
 		for s = 1,n_samples do
-			a[s] = dist_func(a[s] * input_gain) * output_gain
+			o[s] = dist_func(i[s] * input_gain) * output_gain
 		end
+
+		::nextchannel::
 	end
 end
