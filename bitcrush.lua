@@ -42,6 +42,10 @@ local function round (f)
     end
 end
 
+local function change_bitdepth(f, max)
+    return round((f + 1.0) * max) / max - 1.0
+end
+
 local key_samples = {} -- For downsampling: store samples (for each channel) at set intervals to replace existing sample.
 local sample_sums = {} -- How many samples have been visited. Reset each time a new key sample is set.
 
@@ -49,6 +53,7 @@ local prev_rate
 
 function dsp_run (ins, outs, n_samples)
     local ctrl = CtrlPorts:array() -- get control port array (read/write)
+
     local bit_depth = ctrl[1]
     local current_rate = ctrl[2]
     if (current_rate ~= prev_rate) then
@@ -56,6 +61,7 @@ function dsp_run (ins, outs, n_samples)
         key_samples = {}
         sample_sums = {}
     end
+
     prev_rate = current_rate
     local max = (2 ^ bit_depth) - 1;
     local step = math.floor(sample_rate / current_rate); -- The number of samples that need to have the same value based on the session's sample rate    
@@ -74,16 +80,20 @@ function dsp_run (ins, outs, n_samples)
 
 		-- process all audio samples
         for s = 1, n_samples do
-            if not key_samples[c] then
-                key_samples[c] = round((buf[s] + 1.0) * max) / max - 1.0;
+            if step == 1 then
+                buf[s] = change_bitdepth(buf[s], max);
+            elseif not key_samples[c] then
+                key_samples[c] = change_bitdepth(buf[s], max);
                 sample_sums[c] = 2
+                buf[s] = key_samples[c]
             elseif sample_sums[c] == step then
-                key_samples[c] = round((buf[s] + 1.0) * max) / max - 1.0;
+                key_samples[c] = change_bitdepth(buf[s], max);
                 sample_sums[c] = 1
+                buf[s] = key_samples[c]
             else
                 sample_sums[c] = sample_sums[c] + 1
+                buf[s] = key_samples[c]
             end
-            buf[s] = key_samples[c]
 		end
 	end
 end
