@@ -37,7 +37,7 @@ function dsp_configure (ins, outs)
 	assert (audio_ins == audio_outs)
 end
 
-function lofi_distort (f)
+local function lofi_distort (f)
 	-- Based on LoFi as a part of the CMT collection
 	-- https://www.ladspa.org/cmt/overview.html
 	-- https://searchcode.com/file/18573523/cmt/src/lofi.cpp
@@ -48,7 +48,7 @@ function lofi_distort (f)
 	end
 end
 
-function dafx_distort (f)
+local function dafx_distort (f)
 	-- Based on formula in DAFX book by Udo Zölzer
 	-- https://dsp.stackexchange.com/a/28962
 	if (f > 0) then
@@ -58,7 +58,7 @@ function dafx_distort (f)
 	end
 end
 
-function hard_clip (f)
+local function hard_clip (f)
 	-- https://www.dsprelated.com/freebooks/pasp/Nonlinear_Distortion.html
 	if f > 1 then
 		return 1
@@ -69,7 +69,7 @@ function hard_clip (f)
 	end
 end
 
-function soft_clip (f)
+local function soft_clip (f)
 	-- https://www.dsprelated.com/freebooks/pasp/Nonlinear_Distortion.html
 	if f >= 1 then
 		return 2 / 3
@@ -82,28 +82,29 @@ end
 
 function dsp_runmap (bufs, in_map, out_map, n_samples, offset)
 	local ctrl = CtrlPorts:array() -- get control port array (read/write)
+
+	local dist_type = ctrl[1]
+	local dist_func
+	if dist_type == 0 then
+		dist_func = lofi_distort
+	elseif dist_type == 1 then
+		dist_func = dafx_distort
+	elseif dist_type == 2 then
+		dist_func = hard_clip
+	else
+		dist_func = soft_clip
+	end
+
+	local input_gain = ARDOUR.DSP.dB_to_coefficient(ctrl[2])
+	local output_gain = ARDOUR.DSP.dB_to_coefficient(ctrl[3])
+
 	for c = 1,audio_ins do
 		local ib = in_map:get(ARDOUR.DataType("audio"), c - 1);
 		local ob = out_map:get(ARDOUR.DataType("audio"), c - 1);
 
 		if ib == ARDOUR.ChanMapping.Invalid and ob ~= ARDOUR.ChanMapping.Invalid then
-			bufs:get_audio (ob):silence (n_samples, offset)
+			bufs:get_audio(ob):silence(n_samples, offset)
 			goto nextchannel
-		end
-
-		local dist_type = ctrl[1]
-		local input_gain = ARDOUR.DSP.dB_to_coefficient (ctrl[2])
-		local output_gain = ARDOUR.DSP.dB_to_coefficient (ctrl[3])
-
-		local dist_func
-		if dist_type == 0 then
-			dist_func = lofi_distort
-		elseif dist_type == 1 then
-			dist_func = dafx_distort
-		elseif dist_type == 2 then
-			dist_func = hard_clip
-		else
-			dist_func = soft_clip
 		end
 
 		local i = bufs:get_audio(ib):data(offset):array()
