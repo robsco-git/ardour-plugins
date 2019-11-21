@@ -7,7 +7,7 @@ ardour {
 	description = [[A distortion plugin with a number of algorithms to choose from.]]
 }
 
-function dsp_ioconfig ()
+function dsp_ioconfig()
 	return
 	{
 		-- -1, -1 = any number of channels as long as input and output count matches
@@ -15,7 +15,7 @@ function dsp_ioconfig ()
 	}
 end
 
-function dsp_params ()
+function dsp_params()
 	return
 	{
 		{ ["type"] = "input", name = "Type", min = 0, max = 1, default = 1, enum = true, scalepoints =
@@ -24,6 +24,7 @@ function dsp_params ()
 				["DAFX"] = 1,
 				["Hard clip"] = 2,
 				["Soft clip"] = 3,
+				["Smash"] = 4,
 			}
 		},
 		{ ["type"] = "input", name = "Input Gain", min = -20, max = 60, default = 0, unit="dB"},
@@ -31,13 +32,13 @@ function dsp_params ()
 	}
 end
 
-function dsp_configure (ins, outs)
+function dsp_configure(ins, outs)
 	audio_ins = ins:n_audio();
 	local audio_outs = outs:n_audio()
 	assert (audio_ins == audio_outs)
 end
 
-local function lofi_distort (f)
+local function lofi_distort(f)
 	-- Based on LoFi as a part of the CMT collection
 	-- https://www.ladspa.org/cmt/overview.html
 	-- https://searchcode.com/file/18573523/cmt/src/lofi.cpp
@@ -48,7 +49,7 @@ local function lofi_distort (f)
 	end
 end
 
-local function dafx_distort (f)
+local function dafx_distort(f)
 	-- Based on formula in DAFX book by Udo Zölzer
 	-- https://dsp.stackexchange.com/a/28962
 	if (f > 0) then
@@ -58,7 +59,7 @@ local function dafx_distort (f)
 	end
 end
 
-local function hard_clip (f)
+local function hard_clip(f)
 	-- https://www.dsprelated.com/freebooks/pasp/Nonlinear_Distortion.html
 	if f > 1 then
 		return 1
@@ -69,7 +70,7 @@ local function hard_clip (f)
 	end
 end
 
-local function soft_clip (f)
+local function soft_clip(f)
 	-- https://www.dsprelated.com/freebooks/pasp/Nonlinear_Distortion.html
 	if f >= 1 then
 		return 2 / 3
@@ -80,7 +81,12 @@ local function soft_clip (f)
 	end
 end
 
-function dsp_runmap (bufs, in_map, out_map, n_samples, offset)
+local function smash(f)
+	-- https://github.com/Ardour/ardour/blob/master/scripts/_smash.lua
+	return math.atan(1.5707 * f) -- some non-linear gain.
+end
+
+function dsp_runmap(bufs, in_map, out_map, n_samples, offset)
 	local ctrl = CtrlPorts:array() -- get control port array (read/write)
 
 	local dist_type = ctrl[1]
@@ -91,8 +97,10 @@ function dsp_runmap (bufs, in_map, out_map, n_samples, offset)
 		dist_func = dafx_distort
 	elseif dist_type == 2 then
 		dist_func = hard_clip
-	else
+	elseif dist_type == 3 then
 		dist_func = soft_clip
+	else
+		dist_func = smash
 	end
 
 	local input_gain = ARDOUR.DSP.dB_to_coefficient(ctrl[2])
