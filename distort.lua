@@ -1,7 +1,7 @@
 ardour {
     ["type"]    = "dsp",
-    name        = "a-Distort",
-    category    = "Distort",
+    name        = "Distort",
+    category    = "Distortion",
     license     = "GPLv2",
     author      = "Robert Scott",
     description = [[A distortion plugin with a number of algorithms to choose from.]]

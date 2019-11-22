@@ -1,7 +1,7 @@
 ardour {
     ["type"]    = "dsp",
-    name        = "a-Bitcrush",
-    category    = "Bitcrush",
+    name        = "Bitcrush",
+    category    = "Bitcrushing",
     license     = "MIT",
     author      = "Robert Scott",
     description = [[Apply bit reduction and/or downsampling to the audio signal.]]
