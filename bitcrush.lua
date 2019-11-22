@@ -75,7 +75,7 @@ function dsp_run (ins, outs, n_samples)
         if not sample_sums[c] then
             sample_sums[c] = 1
         end
-        
+
         -- direct audio data access, in-place processing of output buffer
         local buf = outs[c]:array() -- get channel's 'c' data as lua array reference
 
