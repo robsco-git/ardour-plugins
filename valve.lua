@@ -6,7 +6,7 @@ ardour {
     category    = "Saturation",
     license     = "GPLv2",
     author      = "Robert Scott",
-    description = [[A valve saturation plugin.]]
+    description = [[An extremely expensive valve saturation plugin.]]
 }
 
 function dsp_ioconfig()
@@ -34,6 +34,7 @@ end
 -- y = e^x
 function f_exp(x)
     return math.exp(x)
+    -- return 2.71828 ^ x -- approximation
 end
 
 local itm1 = 0.0
@@ -48,9 +49,6 @@ function dsp_runmap(bufs, in_map, out_map, n_samples, offset)
     -- dist_p is a control between 0 and 1 - hardness level
     local dist_p = ctrl[2]
     local dist = dist_p * 40.0 + 0.1
-
-    -- local input_gain = ARDOUR.DSP.dB_to_coefficient(ctrl[2])
-    -- local output_gain = ARDOUR.DSP.dB_to_coefficient(ctrl[3])
 
     for c = 1,audio_ins do
         local ib = in_map:get(ARDOUR.DataType("audio"), c - 1);
